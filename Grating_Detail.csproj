@@ -31,6 +31,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="Tekla.Structures" />
     <Reference Include="Tekla.Structures.Model" />
     <Reference Include="Tekla.Structures.Plugins" />

@@ -112,12 +112,12 @@ public class Grating_Detail : PluginBase
           Partprofile1 = (this.data.hole_L + 2 * this.data.Plate_h).ToString() + "*" + (2 * this.data.Plate_h + this.data.hole_w).ToString();
         Partprofile2 = Partprofile1;
       }
-      Assembly assembly = part1.GetAssembly();
      // assembly.SetMainPart(part1);
       Beam cut = CreateCut(center_point, part1, Partprofile2);
-       CreateCut(center_point, part1, Partprofile1).Delete();
-   
+     
+        Assembly assembly = part1.GetAssembly();
         ArrayList secondaries = assembly.GetSecondaries();
+        ArrayList newSecondaries = new ArrayList();
       for (int index = 0; index < secondaries.Count; ++index)
       {
           Part Part_To_Be_Cut = (Part)secondaries[index];
@@ -181,9 +181,10 @@ public class Grating_Detail : PluginBase
                   if (need)
                   {
                       Beam SecSidePlate = copyBeam(partToCutBeam);
-                      CreateCut(center_point, SecSidePlate, Partprofile2).Delete();
+                      CreateCut(center_point, SecSidePlate, Partprofile1).Delete();
                       CutPlane cut2 = cutsideplate(center_point, SecSidePlate, -1 * factor);
                       insert_weld(part1, SecSidePlate);
+                      newSecondaries.Add(SecSidePlate);
                   }
                   else
                   {
@@ -194,9 +195,9 @@ public class Grating_Detail : PluginBase
 
       }
       // split reget sec parts
-      secondaries.Clear();
-      assembly = part1.GetAssembly();
-      secondaries = assembly.GetSecondaries();
+      //secondaries.Clear();
+      //assembly = part1.GetAssembly();
+      //secondaries = assembly.GetSecondaries();
      
         //Beam cut11 = this.CreateCut(center_point, part1, Partprofile1);
       OBB obb1 = this.CreateObb((Part) cut);
@@ -217,7 +218,7 @@ public class Grating_Detail : PluginBase
             lineSegmentList.Add(obb2);
           }
         }
-        Point point1_1 = lineSegmentList[lineSegmentList.Count / 2].Point1;
+        Point point1_1 = lineSegmentList[(int)(lineSegmentList.Count / 3)].Point1;
         List<LineSegment> lowerEdge = this.new_get_lower_edge(part1);
         ArrayList arrayList = new ArrayList();
         List<Point> pointList = new List<Point>();
@@ -234,7 +235,9 @@ public class Grating_Detail : PluginBase
         Point P2 = pointList[pointList.Count - 1];
         if (point1_1 == P1 || point1_1 == P2)
           point1_1 = lineSegmentList[lineSegmentList.Count / 2 - 1].Point1;
-       
+
+        if (point1_1 == P1 || point1_1 == P2)
+            point1_1 = lineSegmentList[lineSegmentList.Count / 2 - 2].Point1;
           PolyBeam polyBeam = polyToePlate(point1_1, P1, P2);
        //s
        //   Beam cut2 = this.CreateCut(center_point, part1, Partprofile2);
@@ -244,117 +247,151 @@ public class Grating_Detail : PluginBase
         ModelObjectEnumerator booleans = polyBeam.GetBooleans();
         while (booleans.MoveNext())
           (booleans.Current as BooleanPart).Delete();
+       
+          CreateCut(center_point, part1, Partprofile1).Delete();
+
       }     
 #endregion
       #region rectangular
       else
       {
+          CreateCut(center_point, part1, Partprofile1).Delete();
+
           // lines for  toe plates
-        foreach (LineSegment lineSegment in lowerFaceEdge)
-        {
-          if (obb1.Intersects(lineSegment))
+          foreach (LineSegment lineSegment in lowerFaceEdge)
           {
-            try
-            {
-              LineSegment obb2 = Intersection.LineSegmentToObb(lineSegment, obb1);
-              if (obb2.Length() > 1) lineList.Add(obb2);
-            }
-            catch (Exception )
-            {
-            }
+              if (obb1.Intersects(lineSegment))
+              {
+                  try
+                  {
+                      LineSegment obb2 = Intersection.LineSegmentToObb(lineSegment, obb1);
+                      if (obb2.Length() > 1) lineList.Add(obb2);
+                  }
+                  catch (Exception)
+                  {
+                  }
+              }
           }
-        }
-        cut.Delete();
-     
+          cut.Delete();
+
           // remove toe plates from sec
-        for (int index = 0; index < secondaries.Count; ++index)
-        {
-          Beam beam = secondaries[index] as Beam;
-          if (beam !=null)
+          for (int index = 0; index < secondaries.Count; ++index)
           {
-              if (beam.Class == "211")
+              Beam beam = secondaries[index] as Beam;
+              PolyBeam polybeam = secondaries[index] as PolyBeam;
+              if (polybeam != null)
               {
-                  secondaries.Remove(beam);
+                  secondaries.Remove(polybeam);
                   index = -1;
-              } 
+              }
+              else if (beam != null)
+              {
+                  if (beam.Class == "211")
+                  {
+                      secondaries.Remove(beam);
+                      index = -1;
+                  }
+              }
           }
-        }
+          //for (int i = 0; i < newSecondaries.Count; i++)
+          //{
+          //    secondaries.Insert(i, newSecondaries);
 
-// small toeplate points
-        foreach (Part GPart in secondaries)
-        {
-            List<LineSegment> lowerlines = Get_Lower_face_edge(GPart);
+          //}
+          // small toeplate points
+          //foreach (Part GPart in secondaries)
+          //{
+          //    List<LineSegment> lowerlines = Get_Lower_face_edge(GPart);
 
-            foreach (LineSegment lineSegment in lowerlines)
+          //    foreach (LineSegment lineSegment in lowerlines)
+          //    {
+          //        if (obb1.Intersects(lineSegment))
+          //        {
+          //            try
+          //            {
+          //                LineSegment obb2 = Intersection.LineSegmentToObb(lineSegment, obb1);
+          //                if (obb2.Length() > 1) lineList.Add(obb2);
+          //            }
+          //            catch (Exception)
+          //            {
+          //            }
+          //        }
+          //    }
+          //}
+
+          //foreach (Part GPart in newSecondaries)
+          //{
+          //    List<LineSegment> lowerlines = Get_Lower_face_edge(GPart);
+
+          //    foreach (LineSegment lineSegment in lowerlines)
+          //    {
+          //        if (obb1.Intersects(lineSegment))
+          //        {
+          //            try
+          //            {
+          //                LineSegment obb2 = Intersection.LineSegmentToObb(lineSegment, obb1);
+          //                if (obb2.Length() > 1) lineList.Add(obb2);
+          //            }
+          //            catch (Exception)
+          //            {
+          //            }
+          //        }
+          //    }
+          //}
+
+          //compine lines
+          //for (int index1 = 0; index1 <= lineList.Count - 1; ++index1)
+          //{
+          //    LineSegment line1 = lineList[index1];
+          //    for (int index2 = index1 + 1; index2 <= lineList.Count - 1; ++index2)
+          //    {
+          //        LineSegment line2 = lineList[index2];
+          //        if (line1 != line2 && line1 != null && line2 != null)
+          //        {
+          //            bool done = false;
+          //            LineSegment newline;
+          //            combine_beams_have_same_vector(line1, line2, out done, out newline);
+          //            if (done)
+          //            {
+          //                lineList.Remove(line1);
+          //                lineList.Remove(line2);
+          //                lineList.Add(newline);
+          //                --index1;
+          //                break;
+
+          //            }
+
+          //        }
+          //    }
+          //}
+
+
+          // insert toeplates
+          for (int i = 0; i < lineList.Count; i++)
           {
-            if (obb1.Intersects(lineSegment))
-            {
-              try
-              {
-                LineSegment obb2 = Intersection.LineSegmentToObb(lineSegment, obb1);
-                if (obb2.Length() > 1) lineList.Add(obb2);
-              }
-              catch (Exception )
-              {
-              }
-            }
+              Beam beam = this.insert_toeplate(lineList[i].Point1, lineList[i].Point2);
+              insert_weld(part1, beam);
+              beamList.Add(beam);
           }
-        }
-
-
-        //compine lines
-        for (int index1 = 0; index1 <= lineList.Count - 1; ++index1)
-        {
-            LineSegment line1 = lineList[index1];
-            for (int index2 = index1 + 1; index2 <= lineList.Count - 1; ++index2)
-            {
-                LineSegment line2 = lineList[index2];
-                if (line1 != line2 && line1 != null && line2 != null)
-                {
-                    bool done = false;
-                    LineSegment newline;
-                    combine_beams_have_same_vector(line1, line2, out done, out newline);
-                    if (done)
-                    {
-                        lineList.Remove(line1);
-                        lineList.Remove(line2);
-                        lineList.Add(newline);
-                        --index1;
-                        break;
-
-                    }
-
-                }
-            }
-        }
-
-
-        // insert toeplates
-        for (int i = 0; i < lineList.Count; i++)
-        {
-            Beam beam = this.insert_toeplate(lineList[i].Point1, lineList[i].Point2);
-            insert_weld(part1, beam);
-            beamList.Add(beam);
-        }
 
           // cut part by part
-        for (int index = 0; index < beamList.Count; ++index)
-        {
-            try
-            {
-                this.part_cut((Part)beamList[index], (Part)beamList[index + 1]);
-            }
-            catch (Exception)
-            {
-            }
-        }
-        try
-        {
-            this.part_cut((Part)beamList[beamList.Count - 1], (Part)beamList[0]);
-        }
-        catch (Exception)
-        {
-        }
+          for (int index = 0; index < beamList.Count; ++index)
+          {
+              try
+              {
+                  this.part_cut((Part)beamList[index], (Part)beamList[index + 1]);
+              }
+              catch (Exception)
+              {
+              }
+          }
+          try
+          {
+              this.part_cut((Part)beamList[beamList.Count - 1], (Part)beamList[0]);
+          }
+          catch (Exception)
+          {
+          }
 
 
 
